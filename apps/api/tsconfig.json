@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "rootDir": "./",
+    "baseUrl": "./",
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Tus opciones de Typechecking */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    
+    /* Opciones recomendadas que tenías */
+    "jsx": "react-jsx",
+    "moduleDetection": "force"
+  },
+  "include": [
+    "src/**/*", 
+    "prisma.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "generated",
+    "dist"
+  ]
+}
