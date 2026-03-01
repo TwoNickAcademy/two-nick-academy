@@ -11,5 +11,6 @@ declare namespace NodeJS {
     OPENAI_API_KEY: string
     BINANCE_PAY_API_KEY: string
     BINANCE_PAY_SECRET_KEY: string
+    VPS_API_KEY: string
   }
 }

@@ -45,7 +45,7 @@ export function requireLevel(minLevel: MembershipLevel) {
     const userRank = LEVEL_RANK[req.user.membershipLevel]
     const required = LEVEL_RANK[minLevel]
 
-    if ((userRank ?? 0) >= (required ?? 0)) {
+    if ((userRank ?? 0) < (required ?? 0)) {
       res.status(403).json({
         message: `Esta función requiere membresía ${minLevel} o superior`,
         requiredLevel: minLevel,
