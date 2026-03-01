@@ -1,27 +1,38 @@
 {
-  "name": "api",
+  "name": "twonick-api",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Two-Nick Academy — Backend API",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "prisma:generate": "prisma generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.30.3",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
+    "nanoid": "^5.0.7",
     "pg": "^8.19.0",
-    "redis": "^5.11.0"
+    "redis": "^5.11.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
@@ -31,11 +42,7 @@
     "nodemon": "^3.1.14",
     "prisma": "^7.4.2",
     "ts-node": "^10.9.2",
+    "tsx": "^4.15.6",
     "typescript": "^5.9.3"
-  },
-"scripts": {
-  "build": "tsc",
-  "start": "node dist/index.js",
-  "dev": "ts-node src/index.ts"
-}
+  }
 }

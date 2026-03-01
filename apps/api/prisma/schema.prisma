@@ -1,14 +1,318 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ============================================================
+// TWO-NICK ACADEMY — Prisma Schema
+// PostgreSQL + Full RBAC + Memberships + Signals + AI + MT5
+// ============================================================
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"] // <-- AÑADIMOS ESTA LINEA
 }
 
 datasource db {
   provider = "postgresql"
+  //url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum MembershipLevel {
+  GENERAL
+  VIP
+  SUPREMO
+  MASTER
+}
+
+enum PaymentProvider {
+  BINANCE_PAY
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+enum SignalDirection {
+  BUY
+  SELL
+}
+
+enum SignalMarket {
+  FOREX
+  CRYPTO
+  INDICES
+  COMMODITIES
+}
+
+enum SignalStatus {
+  ACTIVE
+  CLOSED
+  WIN
+  LOSS
+  CANCELLED
+}
+
+enum Mt5AccountStatus {
+  ACTIVE
+  PAUSED
+  REVOKED
+}
+
+enum ReferralStatus {
+  PENDING
+  PAID
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+// ─────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String?  @unique
+  displayName  String   @map("display_name")
+  passwordHash String   @map("password_hash")
+  avatarUrl    String?  @map("avatar_url")
+
+  // Referidos
+  referralCode  String  @unique @map("referral_code")
+  referredById  String? @map("referred_by")
+  referredBy    User?   @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals     User[]  @relation("UserReferrals")
+
+  // Telegram (P2P)
+  telegramId    BigInt? @unique @map("telegram_id")
+
+  // Auth
+  isVerified    Boolean   @default(false) @map("is_verified")
+  isActive      Boolean   @default(true)  @map("is_active")
+  lastSeen      DateTime? @map("last_seen")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  membership        Membership?
+  payments          Payment[]
+  aiInteractions    AiInteraction[]
+  mt5Accounts       Mt5Account[]
+  referralsGiven    Referral[]      @relation("ReferrerRelation")
+  referralsReceived Referral[]      @relation("ReferredRelation")
+  refreshTokens     RefreshToken[]
+  courseProgress    UserProgress[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// REFRESH TOKENS
+// ─────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  isRevoked Boolean  @default(false) @map("is_revoked")
+  userAgent String?  @map("user_agent")
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────────
+// MEMBERSHIPS
+// ─────────────────────────────────────────────
+
+model Membership {
+  id           String          @id @default(uuid())
+  userId       String          @unique @map("user_id")
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level        MembershipLevel @default(GENERAL)
+  startedAt    DateTime        @default(now()) @map("started_at")
+  expiryDate   DateTime?       @map("expiry_date")
+  autoRenew    Boolean         @default(true) @map("auto_renew")
+
+  // Cuotas de IA
+  aiQuotaUsed  Int      @default(0) @map("ai_quota_used")
+  aiQuotaReset DateTime @default(now()) @map("ai_quota_reset")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("memberships")
+}
+
+// ─────────────────────────────────────────────
+// PAYMENTS
+// ─────────────────────────────────────────────
+
+model Payment {
+  id             String          @id @default(uuid())
+  userId         String          @map("user_id")
+  user           User            @relation(fields: [userId], references: [id])
+  provider       PaymentProvider
+  providerTxId   String?         @unique @map("provider_tx_id")
+  amountUsd      Decimal         @map("amount_usd") @db.Decimal(10, 2)
+  planPurchased  MembershipLevel @map("plan_purchased")
+  durationDays   Int             @map("duration_days")
+  status         PaymentStatus   @default(PENDING)
+  webhookRaw     Json?           @map("webhook_raw")
+  confirmedAt    DateTime?       @map("confirmed_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  referrals      Referral[]
+
+  @@index([userId])
+  @@index([providerTxId])
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────
+// SIGNALS
+// ─────────────────────────────────────────────
+
+model Signal {
+  id          String          @id @default(uuid())
+  asset       String
+  direction   SignalDirection
+  market      SignalMarket
+  entryPrice  Decimal         @map("entry_price") @db.Decimal(12, 5)
+  stopLoss    Decimal         @map("stop_loss")   @db.Decimal(12, 5)
+  takeProfits Decimal[]       @map("take_profits") @db.Decimal(12, 5)
+  whyText     String?         @map("why_text") @db.Text
+  sourceVps   String?         @map("source_vps")
+  status      SignalStatus    @default(ACTIVE)
+  closePrice  Decimal?        @map("close_price") @db.Decimal(12, 5)
+  pipsResult  Decimal?        @map("pips_result") @db.Decimal(8, 2)
+  minLevel    MembershipLevel @default(GENERAL) @map("min_level")
+  sentAt      DateTime        @default(now()) @map("sent_at")
+  closedAt    DateTime?       @map("closed_at")
+
+  @@index([status, sentAt(sort: Desc)])
+  @@map("signals")
+}
+
+// ─────────────────────────────────────────────
+// AI INTERACTIONS
+// ─────────────────────────────────────────────
+
+model AiInteraction {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId   String      @map("session_id")
+  role        MessageRole
+  contentText String?     @map("content_text") @db.Text
+  imageUrl    String?     @map("image_url")
+  tokensUsed  Int         @default(0) @map("tokens_used")
+  modelUsed   String      @default("gpt-4o") @map("model_used")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([sessionId])
+  @@map("ai_interactions")
+}
+
+// ─────────────────────────────────────────────
+// MT5 ACCOUNTS
+// ─────────────────────────────────────────────
+
+model Mt5Account {
+  id            String           @id @default(uuid())
+  userId        String           @map("user_id")
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brokerName    String           @map("broker_name")
+  accountNumber String           @map("account_number")
+  passwordEnc   String           @map("password_enc")
+  serverName    String           @map("server_name")
+  status        Mt5AccountStatus @default(ACTIVE)
+  riskPct       Decimal          @default(1.00) @map("risk_pct") @db.Decimal(4, 2)
+  minLevelReq   MembershipLevel  @default(VIP) @map("min_level_req")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("mt5_accounts")
+}
+
+// ─────────────────────────────────────────────
+// REFERRALS
+// ─────────────────────────────────────────────
+
+model Referral {
+  id            String         @id @default(uuid())
+  referrerId    String         @map("referrer_id")
+  referrer      User           @relation("ReferrerRelation", fields: [referrerId], references: [id])
+  referredId    String         @map("referred_id")
+  referred      User           @relation("ReferredRelation", fields: [referredId], references: [id])
+  paymentId     String?        @map("payment_id")
+  payment       Payment?       @relation(fields: [paymentId], references: [id])
+  commissionPct Decimal        @default(10.00) @map("commission_pct") @db.Decimal(4, 2)
+  commissionUsd Decimal?       @map("commission_usd") @db.Decimal(8, 2)
+  status        ReferralStatus @default(PENDING)
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+// ─────────────────────────────────────────────
+// COURSES & LESSONS
+// ─────────────────────────────────────────────
+
+model Course {
+  id           String          @id @default(uuid())
+  title        String
+  description  String?         @db.Text
+  thumbnailUrl String?         @map("thumbnail_url")
+  minLevel     MembershipLevel @default(GENERAL) @map("min_level")
+  orderIndex   Int             @default(0) @map("order_index")
+  isPublished  Boolean         @default(false) @map("is_published")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  lessons      Lesson[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id          String   @id @default(uuid())
+  courseId    String   @map("course_id")
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  videoUrl    String?  @map("video_url")
+  duration    Int?
+  orderIndex  Int      @default(0) @map("order_index")
+  isPublished Boolean  @default(false) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  progress    UserProgress[]
+
+  @@index([courseId])
+  @@map("lessons")
+}
+
+model UserProgress {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String   @map("lesson_id")
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  @@unique([userId, lessonId])
+  @@map("user_progress")
 }
