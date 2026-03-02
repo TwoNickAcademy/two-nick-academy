@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto'
 import { openai } from '../../lib/openai'
 import { prisma } from '../../lib/prisma'
 import { redis, AI_QUOTA } from '../../lib/redis'
@@ -70,7 +70,7 @@ export async function checkAndConsumeQuota(
 
 export async function streamChat(params: ChatParams, res: Response): Promise<void> {
   const { userId, userLevel, message, imageBase64, imageMime } = params
-  const sessionId = params.sessionId ?? uuidv4()
+  const sessionId = params.sessionId ?? randomUUID()
 
   // 1. Verificar cuota
   const quota = await checkAndConsumeQuota(userId, userLevel)
