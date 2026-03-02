@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import express from 'express'
+import express, { type Request } from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import { createServer } from 'http'
@@ -8,8 +8,15 @@ import { initSocket } from './lib/socket'
 import { errorHandler } from './middleware/errorHandler'
 
 // Routers
-import authRoutes    from './modules/auth/auth.routes'
-import signalsRoutes from './modules/signals/signals.routes'
+import authRoutes      from './modules/auth/auth.routes'
+import signalsRoutes   from './modules/signals/signals.routes'
+import paymentsRoutes  from './modules/payments/payments.routes'
+import aiRoutes        from './modules/ai/ai.routes'
+import knowledgeRoutes from './modules/knowledge/knowledge.routes'
+import mt5Routes       from './modules/mt5/mt5.routes'
+import coursesRoutes   from './modules/courses/courses.routes'
+import usersRoutes     from './modules/users/users.routes'
+import adminRoutes     from './modules/admin/admin.routes'
 
 const app  = express()
 const http = createServer(app)
@@ -24,7 +31,17 @@ app.use(cors({
   ],
   credentials: true,
 }))
-app.use(express.json({ limit: '10mb' }))
+
+// Captura el rawBody ANTES del parsing JSON (requerido para la firma HMAC de Binance)
+// Solo aplica al endpoint del webhook para no afectar el resto
+app.use(
+  express.json({
+    limit: '10mb',
+    verify: (req: Request & { rawBody?: string }, _res, buf) => {
+      req.rawBody = buf.toString('utf-8')
+    },
+  }),
+)
 app.use(express.urlencoded({ extended: true }))
 
 // ─── Health Check ──────────────────────────────────────────────
@@ -33,8 +50,15 @@ app.get('/health', (_req, res) => {
 })
 
 // ─── Rutas API v1 ──────────────────────────────────────────────
-app.use('/v1/auth',    authRoutes)
-app.use('/v1/signals', signalsRoutes)
+app.use('/v1/auth',      authRoutes)
+app.use('/v1/signals',   signalsRoutes)
+app.use('/v1/payments',  paymentsRoutes)
+app.use('/v1/ai',        aiRoutes)
+app.use('/v1/knowledge', knowledgeRoutes)
+app.use('/v1/mt5',       mt5Routes)
+app.use('/v1/courses',   coursesRoutes)
+app.use('/v1/users',     usersRoutes)
+app.use('/v1/admin',     adminRoutes)
 
 // ─── Error Handler ─────────────────────────────────────────────
 app.use(errorHandler)
@@ -42,8 +66,6 @@ app.use(errorHandler)
 // ─── Bootstrap ─────────────────────────────────────────────────
 async function bootstrap() {
   await connectRedis()
-
-  // Inicializar Socket.io sobre el servidor HTTP
   initSocket(http)
 
   http.listen(PORT, () => {

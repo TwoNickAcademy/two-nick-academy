@@ -316,3 +316,34 @@ model UserProgress {
   @@unique([userId, lessonId])
   @@map("user_progress")
 }
+
+// ─────────────────────────────────────────────
+// KNOWLEDGE BASE (RAG Engine)
+// ─────────────────────────────────────────────
+
+enum KnowledgeCategory {
+  SMC                  // Smart Money Concept
+  ICT                  // Inner Circle Trader
+  RISK_MANAGEMENT
+  PSYCHOLOGY
+  METHODOLOGY          // Metodología propia de la academia
+  PATTERNS             // Patrones de precio
+}
+
+model KnowledgeChunk {
+  id         String            @id @default(uuid())
+  title      String
+  content    String            @db.Text
+  // Embedding almacenado como array de floats en JSON
+  // Compatible con upgrade futuro a pgvector sin cambio de schema
+  embedding  Json?
+  category   KnowledgeCategory @default(METHODOLOGY)
+  tags       String[]          // keywords para búsqueda híbrida
+  isActive   Boolean           @default(true) @map("is_active")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([isActive])
+  @@map("knowledge_chunks")
+}
