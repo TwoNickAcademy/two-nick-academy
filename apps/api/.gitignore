@@ -1,3 +1,23 @@
-.env
+# Dependencias
+node_modules/
 
-/generated/prisma
+# Build
+dist/
+
+# Prisma generado
+/generated/
+generated/prisma/
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
