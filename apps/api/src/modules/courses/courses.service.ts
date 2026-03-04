@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma'
 import { MembershipLevel } from '@prisma/client'
+import { generateStreamUrls, listBunnyVideos } from '../../lib/bunny'
 import type {
   CreateCourseInput,
   UpdateCourseInput,
@@ -111,17 +112,23 @@ export async function getCourse(courseId: string, userId: string, userLevel: Mem
     ).map((p) => p.lessonId),
   )
 
-  const lessons = course.lessons.map((lesson, index) => ({
-    id:          lesson.id,
-    title:       lesson.title,
-    videoUrl:    isLocked ? null : lesson.videoUrl,   // ocultar URL si está bloqueado
-    duration:    lesson.duration,
-    durationFmt: formatDuration(lesson.duration),
-    orderIndex:  lesson.orderIndex,
-    isCompleted: completedIds.has(lesson.id),
-    // Solo puede ver la lección si no está bloqueado, o si es la primera lección (preview)
-    isPreview:   index === 0,
-  }))
+  const lessons = course.lessons.map((lesson, index) => {
+    // Generar URLs firmadas de Bunny.net si el usuario tiene acceso y hay videoId
+    const stream = (!isLocked && lesson.videoUrl)
+      ? generateStreamUrls(lesson.videoUrl)
+      : null
+
+    return {
+      id:          lesson.id,
+      title:       lesson.title,
+      stream,                                          // { embedUrl, hlsUrl, thumbnail, videoId } | null
+      duration:    lesson.duration,
+      durationFmt: formatDuration(lesson.duration),
+      orderIndex:  lesson.orderIndex,
+      isCompleted: completedIds.has(lesson.id),
+      isPreview:   index === 0,
+    }
+  })
 
   const totalLessons     = lessons.length
   const completedLessons = lessons.filter((l) => l.isCompleted).length
@@ -286,4 +293,10 @@ export async function listAllCourses() {
       _count: { select: { lessons: true } },
     },
   })
+}
+
+// ─── Admin: listar videos de Bunny.net para vincular a lecciones ──
+
+export async function listBunnyVideosAdmin(page?: number, search?: string) {
+  return listBunnyVideos(page, search)
 }

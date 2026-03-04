@@ -12,6 +12,7 @@ import {
   createLesson,
   updateLesson,
   deleteLesson,
+  listBunnyVideos,
 } from './courses.controller'
 
 const router: IRouter = Router()
@@ -43,6 +44,14 @@ router.get(
   authenticate,
   requireLevel('MASTER'),
   listAllCourses,
+)
+
+// GET /courses/admin/bunny-videos — Listar videos de Bunny.net para vincular a lecciones
+router.get(
+  '/admin/bunny-videos',
+  authenticate,
+  requireLevel('MASTER'),
+  listBunnyVideos,
 )
 
 // POST /courses/admin — Crear curso nuevo
