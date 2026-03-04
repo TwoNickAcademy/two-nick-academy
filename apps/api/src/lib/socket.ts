@@ -3,6 +3,7 @@ import { Server as SocketServer, type Socket } from 'socket.io'
 import jwt from 'jsonwebtoken'
 import type { JwtAccessPayload } from '../types'
 import { MembershipLevel } from '@prisma/client'
+import { saveMessage, canAccessRoom } from '../modules/chat/chat.service'
 
 // Singleton del servidor Socket.io
 let io: SocketServer
@@ -49,14 +50,64 @@ export function initSocket(httpServer: HttpServer): SocketServer {
     const level  = socket.data['level'] as MembershipLevel
     const userId = socket.data['userId'] as string
 
-    // Unirse a rooms correspondientes al nivel del usuario
+    // Unirse a rooms de señales por nivel
     const rooms = LEVEL_ROOMS[level] ?? ['GENERAL']
     rooms.forEach((room) => socket.join(`level:${room}`))
+
+    // Unirse a rooms de chat accesibles por nivel
+    rooms.forEach((room) => socket.join(`chat:${room}`))
 
     // Room personal para notificaciones privadas
     socket.join(`user:${userId}`)
 
     console.log(`[Socket] Usuario ${userId} conectado — nivel ${level}`)
+
+    // ─── Eventos de Chat ─────────────────────────────────────────
+
+    // Unirse a una sala de chat específica
+    socket.on('chat:join', (data: { roomLevel: MembershipLevel }) => {
+      const roomLevel = data?.roomLevel
+      if (!roomLevel || !canAccessRoom(level, roomLevel)) {
+        socket.emit('chat:error', { message: `Sin acceso a la sala ${roomLevel}` })
+        return
+      }
+      socket.join(`chat:${roomLevel}`)
+    })
+
+    // Enviar mensaje a una sala
+    socket.on('chat:send', async (data: { roomLevel: MembershipLevel; content: string }) => {
+      const roomLevel = data?.roomLevel
+      const content   = data?.content?.trim()
+
+      if (!roomLevel || !content) {
+        socket.emit('chat:error', { message: 'Datos inválidos' })
+        return
+      }
+      if (content.length > 1000) {
+        socket.emit('chat:error', { message: 'Mensaje demasiado largo (máx. 1000 caracteres)' })
+        return
+      }
+      if (!canAccessRoom(level, roomLevel)) {
+        socket.emit('chat:error', { message: `Sin acceso a la sala ${roomLevel}` })
+        return
+      }
+
+      try {
+        const message = await saveMessage(userId, roomLevel, content)
+        // Emitir a todos en la sala (incluyendo el remitente)
+        io.to(`chat:${roomLevel}`).emit('chat:message', message)
+      } catch (err) {
+        console.error('[Chat] Error guardando mensaje:', err)
+        socket.emit('chat:error', { message: 'Error al enviar mensaje' })
+      }
+    })
+
+    // Indicador de "escribiendo..." (efímero, no se guarda)
+    socket.on('chat:typing', (data: { roomLevel: MembershipLevel }) => {
+      const roomLevel = data?.roomLevel
+      if (!roomLevel || !canAccessRoom(level, roomLevel)) return
+      socket.to(`chat:${roomLevel}`).emit('chat:typing', { userId, roomLevel })
+    })
 
     socket.on('disconnect', () => {
       console.log(`[Socket] Usuario ${userId} desconectado`)

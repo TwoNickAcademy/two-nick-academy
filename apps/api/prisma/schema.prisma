@@ -110,6 +110,7 @@ model User {
   refreshTokens     RefreshToken[]
   courseProgress    UserProgress[]
   eventAttendees    EventAttendee[]
+  chatMessages      ChatMessage[]
 
   @@map("users")
 }
@@ -316,6 +317,24 @@ model UserProgress {
 
   @@unique([userId, lessonId])
   @@map("user_progress")
+}
+
+// ─────────────────────────────────────────────
+// COMMUNITY CHAT
+// ─────────────────────────────────────────────
+
+model ChatMessage {
+  id        String          @id @default(uuid())
+  userId    String          @map("user_id")
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomLevel MembershipLevel @map("room_level")
+  content   String          @db.Text
+  isDeleted Boolean         @default(false) @map("is_deleted")
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  @@index([roomLevel, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("chat_messages")
 }
 
 // ─────────────────────────────────────────────
