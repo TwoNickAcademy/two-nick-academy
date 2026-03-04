@@ -20,7 +20,7 @@ export const updateCourseSchema = createCourseSchema.partial().extend({
 
 export const createLessonSchema = z.object({
   title:      z.string().min(3).max(200).trim(),
-  videoUrl:   z.string().url('URL de video inválida').optional(),
+  videoUrl:   z.string().uuid('GUID de video de Bunny.net inválido').optional(),
   // Duración en segundos
   duration:   z.number().int().min(1).optional(),
   orderIndex: z.number().int().min(0).default(0),
