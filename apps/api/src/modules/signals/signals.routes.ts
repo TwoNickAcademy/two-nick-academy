@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { authenticate, requireLevel } from '../../middleware/authenticate'
+import { authenticate, requireLevel, requireRole } from '../../middleware/authenticate'
 import { requireApiKey } from '../../middleware/apiKey'
 import {
   webhookSignal,
@@ -23,7 +23,7 @@ router.get('/history', authenticate, signalHistory)
 // GET /signals/:id — Detalle de señal
 router.get('/:id', authenticate, getSignal)
 
-// PATCH /signals/:id/close — Solo MASTER puede cerrar señales
-router.patch('/:id/close', authenticate, requireLevel('MASTER'), closeSignal)
+// PATCH /signals/:id/close — TEACHER+ puede cerrar señales
+router.patch('/:id/close', authenticate, requireRole('TEACHER'), closeSignal)
 
 export default router

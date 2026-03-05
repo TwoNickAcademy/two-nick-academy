@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { authenticate, requireLevel } from '../../middleware/authenticate'
+import { authenticate, requireLevel, requireRole } from '../../middleware/authenticate'
 import {
   // Usuario
   listUpcomingEvents,
@@ -37,26 +37,26 @@ router.post('/:eventId/rsvp', authenticate, rsvpEvent)
 router.delete('/:eventId/rsvp', authenticate, cancelRsvp)
 
 // ═══════════════════════════════════════════════════════════════════
-// RUTAS ADMIN (MASTER)
+// RUTAS ADMIN (TEACHER+)
 // ═══════════════════════════════════════════════════════════════════
 
 // GET    /events/admin/all
-router.get('/admin/all', authenticate, requireLevel('MASTER'), listAllEvents)
+router.get('/admin/all', authenticate, requireRole('TEACHER'), listAllEvents)
 
 // POST   /events/admin
-router.post('/admin', authenticate, requireLevel('MASTER'), createEvent)
+router.post('/admin', authenticate, requireRole('TEACHER'), createEvent)
 
 // PATCH  /events/admin/:eventId
-router.patch('/admin/:eventId', authenticate, requireLevel('MASTER'), updateEvent)
+router.patch('/admin/:eventId', authenticate, requireRole('TEACHER'), updateEvent)
 
 // DELETE /events/admin/:eventId
-router.delete('/admin/:eventId', authenticate, requireLevel('MASTER'), deleteEvent)
+router.delete('/admin/:eventId', authenticate, requireRole('TEACHER'), deleteEvent)
 
 // GET    /events/admin/:eventId/attendees
 router.get(
   '/admin/:eventId/attendees',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('TEACHER'),
   listEventAttendees,
 )
 

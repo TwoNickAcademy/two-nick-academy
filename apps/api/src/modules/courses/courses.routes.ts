@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { authenticate, requireLevel } from '../../middleware/authenticate'
+import { authenticate, requireLevel, requireRole } from '../../middleware/authenticate'
 import {
   // Usuario
   listCourses,
@@ -35,14 +35,14 @@ router.post(
 )
 
 // ═══════════════════════════════════════════════════════════════════
-// RUTAS ADMIN (MASTER únicamente)
+// RUTAS ADMIN (ADMIN+)
 // ═══════════════════════════════════════════════════════════════════
 
 // GET /courses/admin/all — Ver todos incluyendo borradores
 router.get(
   '/admin/all',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   listAllCourses,
 )
 
@@ -50,7 +50,7 @@ router.get(
 router.get(
   '/admin/bunny-videos',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   listBunnyVideos,
 )
 
@@ -58,7 +58,7 @@ router.get(
 router.post(
   '/admin',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   createCourse,
 )
 
@@ -66,7 +66,7 @@ router.post(
 router.patch(
   '/admin/:courseId',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   updateCourse,
 )
 
@@ -74,7 +74,7 @@ router.patch(
 router.post(
   '/admin/:courseId/lessons',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   createLesson,
 )
 
@@ -82,7 +82,7 @@ router.post(
 router.patch(
   '/admin/:courseId/lessons/:lessonId',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   updateLesson,
 )
 
@@ -90,7 +90,7 @@ router.patch(
 router.delete(
   '/admin/:courseId/lessons/:lessonId',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   deleteLesson,
 )
 
