@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import type { AuthRequest, JwtAccessPayload } from '../types'
-import { MembershipLevel } from '@prisma/client'
+import { MembershipLevel, UserRole } from '@prisma/client'
 
 // ─── Middleware: Verificar JWT ─────────────────────────────────
 
@@ -18,8 +18,9 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
     req.user = {
       id:              payload.sub,
       email:           payload.email,
-      displayName:     '',       // no necesario en el token
+      displayName:     '',
       membershipLevel: payload.level,
+      role:            payload.role ?? 'USER',
     }
     next()
   } catch {
@@ -27,13 +28,10 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
   }
 }
 
-// ─── Middleware: RBAC — requerir nivel mínimo ──────────────────
+// ─── Middleware: RBAC — requerir nivel mínimo de membresía ─────
 
 const LEVEL_RANK: Record<MembershipLevel, number> = {
-  GENERAL: 0,
-  VIP:     1,
-  SUPREMO: 2,
-  MASTER:  3,
+  GENERAL: 0, VIP: 1, SUPREMO: 2, MASTER: 3,
 }
 
 export function requireLevel(minLevel: MembershipLevel) {
@@ -50,6 +48,35 @@ export function requireLevel(minLevel: MembershipLevel) {
         message: `Esta función requiere membresía ${minLevel} o superior`,
         requiredLevel: minLevel,
         currentLevel:  req.user.membershipLevel,
+      })
+      return
+    }
+    next()
+  }
+}
+
+// ─── Middleware: RBAC — requerir rol administrativo ────────────
+
+const ROLE_RANK: Record<UserRole, number> = {
+  USER:    0,
+  ADMIN:   1,
+  CREATOR: 2,
+}
+
+export function requireRole(minRole: UserRole) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ message: 'No autenticado' })
+      return
+    }
+    const userRank = ROLE_RANK[req.user.role] ?? 0
+    const required = ROLE_RANK[minRole] ?? 0
+
+    if (userRank < required) {
+      res.status(403).json({
+        message: `Acceso restringido — se requiere rol ${minRole}`,
+        requiredRole: minRole,
+        currentRole:  req.user.role,
       })
       return
     }

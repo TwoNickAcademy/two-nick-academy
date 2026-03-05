@@ -83,7 +83,7 @@ export async function registerUser(
     return created
   })
 
-  const tokens = await createTokenPair(user.id, user.email, 'GENERAL', userAgent, ipAddress)
+  const tokens = await createTokenPair(user.id, user.email, 'GENERAL', user.role, userAgent, ipAddress)
 
   return {
     user: {
@@ -138,16 +138,17 @@ export async function loginUser(
     data: { lastSeen: new Date() },
   })
 
-  const tokens = await createTokenPair(user.id, user.email, level, userAgent, ipAddress)
+  const tokens = await createTokenPair(user.id, user.email, level, user.role, userAgent, ipAddress)
 
   return {
     user: {
       id:               user.id,
-      email:           user.email,
-      displayName:     user.displayName,
-      avatarUrl:       user.avatarUrl,
-      referralCode:    user.referralCode,
-      membershipLevel: level,
+      email:            user.email,
+      displayName:      user.displayName,
+      avatarUrl:        user.avatarUrl,
+      referralCode:     user.referralCode,
+      membershipLevel:  level,
+      role:             user.role,
     },
     ...tokens,
   }
@@ -186,6 +187,7 @@ export async function refreshAccessToken(
     stored.user.id,
     stored.user.email,
     level,
+    stored.user.role,
     userAgent,
     ipAddress,
   )
@@ -207,6 +209,7 @@ async function createTokenPair(
   userId: string,
   email: string,
   level: string,
+  role: string,
   userAgent?: string,
   ipAddress?: string,
 ) {
@@ -220,7 +223,7 @@ async function createTokenPair(
     },
   })
 
-  const accessToken  = generateAccessToken({ sub: userId, email, level: level as any })
+  const accessToken  = generateAccessToken({ sub: userId, email, level: level as any, role: role as any })
   const refreshToken = generateRefreshToken({ sub: userId, tokenId: dbToken.id })
 
   await prisma.refreshToken.update({

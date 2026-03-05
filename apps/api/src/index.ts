@@ -19,6 +19,7 @@ import eventsRoutes    from './modules/events/events.routes'
 import chatRoutes      from './modules/chat/chat.routes'
 import usersRoutes     from './modules/users/users.routes'
 import adminRoutes     from './modules/admin/admin.routes'
+import { purgeOldMessages } from './modules/chat/chat.service'
 
 const app  = express()
 const http = createServer(app)
@@ -71,6 +72,11 @@ app.use(errorHandler)
 async function bootstrap() {
   await connectRedis()
   initSocket(http)
+
+  // ─── Cron: purgar mensajes de chat con más de 24h ──────────────
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
+  setInterval(() => purgeOldMessages().catch(console.error), TWENTY_FOUR_HOURS)
+  console.log('[Chat] Purge automático programado cada 24h')
 
   http.listen(PORT, () => {
     console.log(`[Server] Two-Nick API corriendo en puerto ${PORT}`)

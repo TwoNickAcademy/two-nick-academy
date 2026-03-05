@@ -1,4 +1,4 @@
-import { MembershipLevel } from '@prisma/client'
+import { MembershipLevel, UserRole } from '@prisma/client'
 import { Request } from 'express'
 
 // Usuario autenticado adjunto al Request por el middleware
@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   email: string
   displayName: string
   membershipLevel: MembershipLevel
+  role: UserRole
 }
 
 export interface AuthRequest extends Request {
@@ -19,6 +20,7 @@ export interface JwtAccessPayload {
   sub: string              // user.id
   email: string
   level: MembershipLevel
+  role: UserRole
   iat?: number
   exp?: number
 }

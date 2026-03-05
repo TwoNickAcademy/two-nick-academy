@@ -1,17 +1,19 @@
 import { Router, type IRouter } from 'express'
-import { authenticate, requireLevel } from '../../middleware/authenticate'
+import { authenticate, requireRole } from '../../middleware/authenticate'
 import {
   overview,
   revenueStats,
   signalsStats,
   usersStats,
   aiStats,
+  listUsers,
+  setUserRole,
 } from './admin.controller'
 
 const router: IRouter = Router()
 
-// Todos los endpoints de stats son exclusivos de MASTER
-router.use(authenticate, requireLevel('MASTER'))
+// Todos los endpoints de admin requieren rol ADMIN o superior
+router.use(authenticate, requireRole('ADMIN'))
 
 // GET /admin/stats/overview  — KPIs del dashboard principal
 router.get('/stats/overview', overview)
@@ -27,5 +29,11 @@ router.get('/stats/users',    usersStats)
 
 // GET /admin/stats/ai        — Uso del mentor IA
 router.get('/stats/ai',       aiStats)
+
+// GET  /admin/users          — Listar usuarios (ADMIN+)
+router.get('/users',          listUsers)
+
+// PATCH /admin/users/:id/role — Cambiar rol de usuario (solo CREATOR)
+router.patch('/users/:id/role', requireRole('CREATOR'), setUserRole)
 
 export default router

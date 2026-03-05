@@ -24,6 +24,12 @@ enum MembershipLevel {
   MASTER
 }
 
+enum UserRole {
+  USER       // Cliente normal
+  ADMIN      // Administrador — gestiona la plataforma
+  CREATOR    // Creador — control absoluto
+}
+
 enum PaymentProvider {
   BINANCE_PAY
   MANUAL
@@ -92,6 +98,9 @@ model User {
 
   // Telegram (P2P)
   telegramId    BigInt? @unique @map("telegram_id")
+
+  // Rol administrativo (independiente del nivel de membresía)
+  role          UserRole  @default(USER) @map("role")
 
   // Auth
   isVerified    Boolean   @default(false) @map("is_verified")

@@ -81,6 +81,29 @@ export async function getMessages(
   })).reverse()  // devolver cronológicamente (más antiguo primero)
 }
 
+// ─── Admin: limpiar sala completa (soft delete masivo) ───────────
+
+export async function clearRoom(roomLevel: MembershipLevel) {
+  const result = await prisma.chatMessage.updateMany({
+    where: { roomLevel, isDeleted: false },
+    data:  { isDeleted: true, content: '[Sala limpiada por un administrador]' },
+  })
+  return { cleared: result.count, roomLevel }
+}
+
+// ─── Cron: eliminar mensajes con más de 24h (hard delete) ────────
+
+export async function purgeOldMessages() {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const result = await prisma.chatMessage.deleteMany({
+    where: { createdAt: { lt: cutoff } },
+  })
+  if (result.count > 0) {
+    console.log(`[Chat] Purge automático: ${result.count} mensajes eliminados`)
+  }
+  return result.count
+}
+
 // ─── Admin: eliminar mensaje (soft delete) ────────────────────────
 
 export async function deleteMessage(messageId: string) {

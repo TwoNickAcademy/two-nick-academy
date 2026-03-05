@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma'
-import { PaymentStatus, SignalStatus } from '@prisma/client'
+import { PaymentStatus, SignalStatus, UserRole } from '@prisma/client'
 
 // ─── Helpers de fecha ─────────────────────────────────────────────
 
@@ -372,4 +372,38 @@ export async function getAiStats() {
       tokens: m._sum.tokensUsed ?? 0,
     })),
   }
+}
+
+// ─── Listar usuarios ──────────────────────────────────────────────
+
+export async function getUsers(page: number, limit: number) {
+  const skip = (page - 1) * limit
+  const [total, users] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.findMany({
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, email: true, displayName: true,
+        role: true, isActive: true, createdAt: true,
+        membership: { select: { level: true, expiryDate: true } },
+      },
+    }),
+  ])
+  return { total, page, limit, users }
+}
+
+// ─── Cambiar rol de usuario ───────────────────────────────────────
+
+export async function updateUserRole(userId: string, role: UserRole) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
+  if (!user) throw Object.assign(new Error('Usuario no encontrado'), { statusCode: 404 })
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data:  { role },
+    select: { id: true, email: true, displayName: true, role: true },
+  })
+  return updated
 }
