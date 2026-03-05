@@ -59,8 +59,9 @@ export function requireLevel(minLevel: MembershipLevel) {
 
 const ROLE_RANK: Record<UserRole, number> = {
   USER:    0,
-  ADMIN:   1,
-  CREATOR: 2,
+  TEACHER: 1,
+  ADMIN:   2,
+  CREATOR: 3,
 }
 
 export function requireRole(minRole: UserRole) {

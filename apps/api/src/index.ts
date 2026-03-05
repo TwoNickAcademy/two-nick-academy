@@ -17,8 +17,10 @@ import mt5Routes       from './modules/mt5/mt5.routes'
 import coursesRoutes   from './modules/courses/courses.routes'
 import eventsRoutes    from './modules/events/events.routes'
 import chatRoutes      from './modules/chat/chat.routes'
-import usersRoutes     from './modules/users/users.routes'
-import adminRoutes     from './modules/admin/admin.routes'
+import usersRoutes         from './modules/users/users.routes'
+import adminRoutes         from './modules/admin/admin.routes'
+import storeRoutes         from './modules/store/store.routes'
+import announcementsRoutes from './modules/announcements/announcements.routes'
 import { purgeOldMessages } from './modules/chat/chat.service'
 
 const app  = express()
@@ -62,8 +64,10 @@ app.use('/v1/mt5',       mt5Routes)
 app.use('/v1/courses',   coursesRoutes)
 app.use('/v1/events',    eventsRoutes)
 app.use('/v1/chat',      chatRoutes)
-app.use('/v1/users',     usersRoutes)
-app.use('/v1/admin',     adminRoutes)
+app.use('/v1/users',         usersRoutes)
+app.use('/v1/admin',         adminRoutes)
+app.use('/v1/store',         storeRoutes)
+app.use('/v1/announcements', announcementsRoutes)
 
 // ─── Error Handler ─────────────────────────────────────────────
 app.use(errorHandler)

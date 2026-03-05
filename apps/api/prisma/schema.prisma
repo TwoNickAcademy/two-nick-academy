@@ -26,6 +26,7 @@ enum MembershipLevel {
 
 enum UserRole {
   USER       // Cliente normal
+  TEACHER    // Profesor — gestiona sus clases y agenda
   ADMIN      // Administrador — gestiona la plataforma
   CREATOR    // Creador — control absoluto
 }
@@ -120,6 +121,7 @@ model User {
   courseProgress    UserProgress[]
   eventAttendees    EventAttendee[]
   chatMessages      ChatMessage[]
+  announcements     Announcement[]
 
   @@map("users")
 }
@@ -423,4 +425,67 @@ model KnowledgeChunk {
   @@index([category])
   @@index([isActive])
   @@map("knowledge_chunks")
+}
+
+// ─────────────────────────────────────────────
+// TIENDA / PRODUCTOS
+// ─────────────────────────────────────────────
+
+enum ProductType {
+  MEMBERSHIP      // Plan de membresía
+  SIGNAL_PACK     // Paquete de señales
+  AUTO_TRADING    // Trading automático MT5
+  PRIVATE_CLASS   // Clase personalizada 1 a 1
+  OTHER           // Otros productos
+}
+
+model Product {
+  id          String          @id @default(uuid())
+  name        String
+  description String?         @db.Text
+  type        ProductType
+  price       Decimal         @db.Decimal(10, 2)
+  currency    String          @default("USD")
+  minLevel    MembershipLevel @default(GENERAL) @map("min_level")
+  isActive    Boolean         @default(true) @map("is_active")
+  isFeatured  Boolean         @default(false) @map("is_featured")
+  imageUrl    String?         @map("image_url")
+  metadata    Json?           // config extra: duración, nivel destino, etc.
+  orderIndex  Int             @default(0) @map("order_index")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@index([type, isActive])
+  @@map("products")
+}
+
+// ─────────────────────────────────────────────
+// AVISOS / ANNOUNCEMENTS
+// ─────────────────────────────────────────────
+
+enum AnnouncementType {
+  INFO          // Información general
+  WARNING       // Alerta importante
+  PROMO         // Promoción / oferta
+  MAINTENANCE   // Mantenimiento del sistema
+  TRADING       // Aviso de trading / mercado
+}
+
+model Announcement {
+  id          String           @id @default(uuid())
+  title       String
+  content     String           @db.Text
+  type        AnnouncementType @default(INFO)
+  minLevel    MembershipLevel  @default(GENERAL) @map("min_level")
+  isPinned    Boolean          @default(false) @map("is_pinned")
+  isActive    Boolean          @default(true) @map("is_active")
+  expiresAt   DateTime?        @map("expires_at")
+  createdById String           @map("created_by_id")
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  @@index([isActive, createdAt(sort: Desc)])
+  @@index([minLevel])
+  @@map("announcements")
 }
