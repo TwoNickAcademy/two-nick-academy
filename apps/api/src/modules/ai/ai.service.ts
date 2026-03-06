@@ -105,7 +105,7 @@ export async function streamChat(params: ChatParams, res: Response): Promise<voi
     if (topChunk?.relatedLessonId && topChunk?.relatedCourseId) {
       const lesson = await prisma.lesson.findUnique({
         where:  { id: topChunk.relatedLessonId },
-        select: { id: true, title: true, course: { select: { id: true, title: true, level: true } } },
+        include: { course: { select: { id: true, title: true, minLevel: true } } },
       })
       if (lesson) {
         relatedLesson = {
@@ -113,7 +113,7 @@ export async function streamChat(params: ChatParams, res: Response): Promise<voi
           lessonId:    lesson.id,
           lessonTitle: lesson.title,
           courseTitle: lesson.course.title,
-          level:       lesson.course.level,
+          level:       lesson.course.minLevel,
         }
       }
     }
