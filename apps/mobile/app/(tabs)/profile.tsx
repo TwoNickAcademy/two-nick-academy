@@ -58,7 +58,7 @@ export default function ProfileScreen() {
 
   async function loadProfile() {
     try {
-      const { data } = await api.get('/users/profile')
+      const { data } = await api.get('/users/me')
       setProfile(data.data)
     } catch {}
     finally { setLoading(false) }

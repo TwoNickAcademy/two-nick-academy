@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { authenticate, requireLevel } from '../../middleware/authenticate'
+import { authenticate, requireLevel, requireRole } from '../../middleware/authenticate'
 import {
   // Perfil propio
   getMe,
@@ -37,7 +37,7 @@ router.get('/me/progress', authenticate, getMyProgress)
 router.get(
   '/admin/list',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   listUsers,
 )
 
@@ -45,7 +45,7 @@ router.get(
 router.get(
   '/admin/:userId',
   authenticate,
-  requireLevel('MASTER'),
+  requireRole('ADMIN'),
   getUserDetail,
 )
 

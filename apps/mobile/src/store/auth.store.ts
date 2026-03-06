@@ -9,7 +9,7 @@ export interface AuthUser {
   avatarUrl:       string | null
   referralCode:    string
   membershipLevel: 'GENERAL' | 'VIP' | 'SUPREMO' | 'MASTER'
-  role:            'USER' | 'ADMIN' | 'CREATOR'
+  role:            'USER' | 'TEACHER' | 'ADMIN' | 'CREATOR'
 }
 
 interface AuthState {
@@ -35,8 +35,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       const token = await SecureStore.getItemAsync('accessToken')
       if (!token) return set({ isHydrated: true })
 
-      const { data } = await api.get('/users/profile')
-      set({ user: data.data, isHydrated: true })
+      const { data } = await api.get('/users/me')
+      const p = data.data
+      set({
+        user: {
+          id:              p.id,
+          email:           p.email,
+          displayName:     p.displayName,
+          avatarUrl:       p.avatarUrl ?? null,
+          referralCode:    p.referralCode,
+          membershipLevel: p.membership?.level ?? 'GENERAL',
+          role:            p.role ?? 'USER',
+        },
+        isHydrated: true,
+      })
     } catch {
       await SecureStore.deleteItemAsync('accessToken')
       await SecureStore.deleteItemAsync('refreshToken')

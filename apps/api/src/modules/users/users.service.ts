@@ -17,6 +17,7 @@ export async function getProfile(userId: string) {
       displayName:  true,
       avatarUrl:    true,
       referralCode: true,
+      role:         true,
       createdAt:    true,
       // membership es 1-a-1 en el schema
       membership: {
@@ -50,6 +51,7 @@ export async function getProfile(userId: string) {
     displayName:  user.displayName,
     avatarUrl:    user.avatarUrl,
     referralCode: user.referralCode,
+    role:         user.role,
     createdAt:    user.createdAt,
     membership: mem
       ? {
