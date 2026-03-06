@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Modal, ScrollView, Linking,
+  View, Text, StyleSheet, TouchableOpacity,
+  ActivityIndicator, Modal, ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors } from '../../src/constants/colors'
 import { api } from '../../src/api/client'
@@ -50,6 +51,7 @@ export default function StoreScreen() {
   const [selected, setSelected] = useState<Product | null>(null)
 
   const load = useCallback(async () => {
+    setLoading(true)
     try {
       const { data } = await api.get('/store')
       setProducts(Array.isArray(data.data) ? data.data : [])
@@ -57,7 +59,7 @@ export default function StoreScreen() {
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useFocusEffect(useCallback(() => { load() }, [load]))
 
   const filtered = filter === 'ALL'
     ? products

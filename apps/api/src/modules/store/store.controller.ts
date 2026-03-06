@@ -3,7 +3,7 @@ import { ProductType } from '@prisma/client'
 import * as storeService from './store.service'
 import type { AuthRequest } from '../../types'
 
-const VALID_TYPES = ['MEMBERSHIP', 'SIGNAL_PACK', 'AUTO_TRADING', 'PRIVATE_CLASS', 'OTHER']
+const VALID_TYPES = ['COURSE', 'EBOOK', 'TOOL', 'MENTORSHIP', 'OTHER']
 
 // GET /store — lista productos accesibles al usuario
 export async function listProducts(req: AuthRequest, res: Response, next: NextFunction) {
