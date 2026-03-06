@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Colors } from '../../src/constants/colors'
 import { api } from '../../src/api/client'
 
-type ProductType = 'COURSE' | 'EBOOK' | 'TOOL' | 'MENTORSHIP' | 'OTHER'
+type ProductType = 'COURSE' | 'EBOOK' | 'TOOL' | 'MENTORSHIP' | 'OTHER' | string
 
 interface Product {
   id: string
@@ -23,13 +23,17 @@ interface Product {
   isAccessible: boolean
 }
 
-const TYPE_META: Record<ProductType, { label: string; icon: any; color: string }> = {
+const DEFAULT_META = { label: 'Producto', icon: 'bag-handle-outline' as any, color: '#9ca3af' }
+
+const TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
   COURSE:     { label: 'Curso',       icon: 'book-outline',          color: '#3B82F6' },
   EBOOK:      { label: 'eBook',       icon: 'document-text-outline', color: '#8B5CF6' },
   TOOL:       { label: 'Herramienta', icon: 'build-outline',         color: '#34d399' },
   MENTORSHIP: { label: 'Mentoría',    icon: 'people-outline',        color: Colors.gold },
   OTHER:      { label: 'Otro',        icon: 'bag-handle-outline',    color: '#9ca3af' },
 }
+
+function getMeta(type: string) { return TYPE_META[type] ?? DEFAULT_META }
 
 const FILTERS: { key: ProductType | 'ALL'; label: string }[] = [
   { key: 'ALL',        label: 'Todos' },
@@ -92,7 +96,7 @@ export default function StoreScreen() {
               <Text style={styles.sectionTitle}>⭐ Destacados</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}>
                 {featured.map(p => {
-                  const meta = TYPE_META[p.type]
+                  const meta = getMeta(p.type)
                   return (
                     <TouchableOpacity key={p.id} style={styles.featuredCard} onPress={() => setSelected(p)} activeOpacity={0.85}>
                       <View style={[styles.featuredIcon, { backgroundColor: meta.color + '22' }]}>
@@ -128,7 +132,7 @@ export default function StoreScreen() {
               </View>
             ) : (
               filtered.map(p => {
-                const meta = TYPE_META[p.type]
+                const meta = getMeta(p.type)
                 return (
                   <TouchableOpacity
                     key={p.id}
@@ -172,7 +176,7 @@ export default function StoreScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             {selected && (() => {
-              const meta = TYPE_META[selected.type]
+              const meta = getMeta(selected.type)
               return (
                 <>
                   <View style={styles.modalHeader}>
