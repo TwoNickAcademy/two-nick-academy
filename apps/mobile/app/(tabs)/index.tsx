@@ -100,9 +100,11 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>⚡ Acceso Rápido</Text>
           <View style={styles.quickGrid}>
             {[
-              { emoji: '📚', label: 'Academia',   route: '/(tabs)/courses' },
-              { emoji: '🤖', label: 'AI Mentor',  route: '/(tabs)/ai'      },
-              { emoji: '📅', label: 'Eventos',    route: '/(tabs)/courses' },
+              { emoji: '📚', label: 'Academia',    route: '/(tabs)/courses' },
+              { emoji: '🤖', label: 'AI Mentor',   route: '/(tabs)/ai'      },
+              { emoji: '🛒', label: 'Tienda',      route: '/(tabs)/store'   },
+              { emoji: '📅', label: 'Eventos',     route: '/(tabs)/events'  },
+              { emoji: '💬', label: 'Chat',        route: '/(tabs)/chat'    },
               { emoji: '💻', label: 'Cuentas MT5', route: '/(tabs)/profile' },
             ].map((item) => (
               <TouchableOpacity
