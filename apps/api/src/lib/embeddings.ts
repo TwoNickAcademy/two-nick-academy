@@ -34,40 +34,38 @@ function cosineSimilarity(a: number[], b: number[]): number {
 export async function retrieveRelevantChunks(
   query: string,
   options?: {
-    topK?:      number       // cuántos chunks retornar (default: 4)
+    topK?:      number
     category?:  KnowledgeCategory
-    threshold?: number       // similitud mínima (default: 0.35)
+    threshold?: number
   },
-): Promise<Array<{ title: string; content: string; score: number }>> {
+): Promise<Array<{ title: string; content: string; score: number; relatedCourseId?: string | null; relatedLessonId?: string | null }>> {
   const topK      = options?.topK      ?? 4
   const threshold = options?.threshold ?? 0.35
 
-  // 1. Generar embedding de la query
   const queryEmbedding = await generateEmbedding(query)
 
-  // 2. Traer todos los chunks activos (filtrar null embeddings en JS)
   const chunks = await prisma.knowledgeChunk.findMany({
     where: {
       isActive: true,
       ...(options?.category ? { category: options.category } : {}),
     },
     select: {
-      title:     true,
-      content:   true,
-      embedding: true,
+      title:           true,
+      content:         true,
+      embedding:       true,
+      relatedCourseId: true,
+      relatedLessonId: true,
     },
   })
 
-  // 3. Calcular similitud para cada chunk (ignorar los sin embedding)
   const scored = chunks
     .filter((c) => Array.isArray(c.embedding))
     .map((chunk) => ({
-      title:   chunk.title,
-      content: chunk.content,
-      score:   cosineSimilarity(
-        queryEmbedding,
-        chunk.embedding as number[],
-      ),
+      title:           chunk.title,
+      content:         chunk.content,
+      relatedCourseId: chunk.relatedCourseId,
+      relatedLessonId: chunk.relatedLessonId,
+      score:           cosineSimilarity(queryEmbedding, chunk.embedding as number[]),
     }))
     .filter((c) => c.score >= threshold)
     .sort((a, b) => b.score - a.score)

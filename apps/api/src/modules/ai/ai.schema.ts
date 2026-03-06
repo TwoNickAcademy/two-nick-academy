@@ -19,10 +19,12 @@ export const chatMessageSchema = z.object({
 
 // ─── Agregar chunk de conocimiento (admin) ────────────────────────
 export const addKnowledgeSchema = z.object({
-  title:    z.string().min(3).max(200),
-  content:  z.string().min(10),
-  category: z.enum(['SMC', 'ICT', 'RISK_MANAGEMENT', 'PSYCHOLOGY', 'METHODOLOGY', 'PATTERNS']),
-  tags:     z.array(z.string()).default([]),
+  title:           z.string().min(3).max(200),
+  content:         z.string().min(10),
+  category:        z.enum(['SMC', 'ICT', 'RISK_MANAGEMENT', 'PSYCHOLOGY', 'METHODOLOGY', 'PATTERNS']),
+  tags:            z.array(z.string()).default([]),
+  relatedCourseId: z.string().uuid().optional().nullable(),
+  relatedLessonId: z.string().uuid().optional().nullable(),
 })
 
 export type ChatMessageInput  = z.infer<typeof chatMessageSchema>

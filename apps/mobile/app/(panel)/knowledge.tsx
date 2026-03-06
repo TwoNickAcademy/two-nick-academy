@@ -19,7 +19,7 @@ const CATEGORIES = [
 
 const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]))
 
-const EMPTY_FORM = { title: '', content: '', category: 'METHODOLOGY', tags: '' }
+const EMPTY_FORM = { title: '', content: '', category: 'METHODOLOGY', tags: '', relatedCourseId: '', relatedLessonId: '' }
 
 interface Chunk {
   id: string
@@ -27,7 +27,11 @@ interface Chunk {
   category: string
   tags: string[]
   createdAt: string
+  relatedCourseId?: string | null
+  relatedLessonId?: string | null
 }
+
+interface Course { id: string; title: string; lessons: { id: string; title: string }[] }
 
 export default function KnowledgePanel() {
   const [chunks, setChunks]     = useState<Chunk[]>([])
@@ -38,6 +42,8 @@ export default function KnowledgePanel() {
   const [saving, setSaving]     = useState(false)
   const [loadingContent, setLoadingContent] = useState(false)
   const [form, setForm]         = useState(EMPTY_FORM)
+  const [courses, setCourses]   = useState<Course[]>([])
+  const [showCoursePicker, setShowCoursePicker] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -47,11 +53,27 @@ export default function KnowledgePanel() {
     finally { setLoading(false) }
   }, [])
 
+  const loadCourses = useCallback(async () => {
+    try {
+      const { data } = await api.get('/courses/admin/all')
+      const list = Array.isArray(data.data) ? data.data : []
+      // Cargar lecciones de cada curso
+      const withLessons = await Promise.all(list.map(async (c: any) => {
+        try {
+          const r = await api.get(`/courses/${c.id}`)
+          return { id: c.id, title: c.title, lessons: r.data.data?.lessons ?? [] }
+        } catch { return { id: c.id, title: c.title, lessons: [] } }
+      }))
+      setCourses(withLessons)
+    } catch {}
+  }, [])
+
   useEffect(() => { load() }, [load])
 
   function openCreate() {
     setEditing(null)
     setForm(EMPTY_FORM)
+    if (courses.length === 0) loadCourses()
     setModal(true)
   }
 
@@ -59,7 +81,8 @@ export default function KnowledgePanel() {
     setLoadingContent(true)
     setModal(true)
     setEditing(chunk)
-    setForm({ title: chunk.title, content: '', category: chunk.category, tags: chunk.tags.join(', ') })
+    setForm({ title: chunk.title, content: '', category: chunk.category, tags: chunk.tags.join(', '), relatedCourseId: chunk.relatedCourseId ?? '', relatedLessonId: chunk.relatedLessonId ?? '' })
+    if (courses.length === 0) loadCourses()
     try {
       const { data } = await api.get(`/knowledge/${chunk.id}`)
       setForm(p => ({ ...p, content: data.data.content }))
@@ -75,10 +98,12 @@ export default function KnowledgePanel() {
     setSaving(true)
     try {
       const payload = {
-        title:    form.title.trim(),
-        content:  form.content.trim(),
-        category: form.category,
-        tags:     form.tags.split(',').map(t => t.trim()).filter(Boolean),
+        title:           form.title.trim(),
+        content:         form.content.trim(),
+        category:        form.category,
+        tags:            form.tags.split(',').map(t => t.trim()).filter(Boolean),
+        relatedCourseId: form.relatedCourseId || null,
+        relatedLessonId: form.relatedLessonId || null,
       }
       if (editing) {
         await api.patch(`/knowledge/${editing.id}`, payload)
@@ -258,6 +283,25 @@ export default function KnowledgePanel() {
                     onChangeText={t => setForm(p => ({ ...p, tags: t }))}
                   />
 
+                  <Text style={styles.fieldLabel}>Lección relacionada (opcional)</Text>
+                  <Text style={styles.fieldHint}>El AI Mentor sugerirá esta lección cuando responda sobre este tema</Text>
+                  {form.relatedLessonId ? (
+                    <View style={styles.lessonSelected}>
+                      <Ionicons name="play-circle" size={16} color={Colors.gold} />
+                      <Text style={styles.lessonSelectedText} numberOfLines={1}>
+                        {courses.find(c => c.id === form.relatedCourseId)?.lessons.find(l => l.id === form.relatedLessonId)?.title ?? 'Lección vinculada'}
+                      </Text>
+                      <TouchableOpacity onPress={() => setForm(p => ({ ...p, relatedCourseId: '', relatedLessonId: '' }))}>
+                        <Ionicons name="close-circle" size={18} color={Colors.red} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={styles.lessonBtn} onPress={() => setShowCoursePicker(true)}>
+                      <Ionicons name="link-outline" size={16} color={Colors.textMuted} />
+                      <Text style={styles.lessonBtnText}>Vincular a una lección de curso</Text>
+                    </TouchableOpacity>
+                  )}
+
                   <View style={styles.tip}>
                     <Ionicons name="bulb-outline" size={16} color={Colors.gold} />
                     <Text style={styles.tipText}>Tip: Fragmentos de 200-500 palabras dan mejores resultados. Escribe como si le explicaras a un alumno en clase.</Text>
@@ -274,6 +318,40 @@ export default function KnowledgePanel() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal selector de curso/lección */}
+      <Modal visible={showCoursePicker} animationType="slide" transparent onRequestClose={() => setShowCoursePicker(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Vincular lección</Text>
+              <TouchableOpacity onPress={() => setShowCoursePicker(false)}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 460 }}>
+              {courses.length === 0 ? (
+                <ActivityIndicator color={Colors.gold} style={{ marginTop: 20 }} />
+              ) : courses.map(course => (
+                <View key={course.id}>
+                  <Text style={styles.courseTitle}>{course.title}</Text>
+                  {course.lessons.map(lesson => (
+                    <TouchableOpacity key={lesson.id} style={styles.lessonRow}
+                      onPress={() => {
+                        setForm(p => ({ ...p, relatedCourseId: course.id, relatedLessonId: lesson.id }))
+                        setShowCoursePicker(false)
+                      }}
+                    >
+                      <Ionicons name="play-circle-outline" size={18} color={Colors.gold} />
+                      <Text style={styles.lessonRowText}>{lesson.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </>
   )
@@ -312,6 +390,14 @@ const styles = StyleSheet.create({
   catBtnText:     { fontSize: 12, fontWeight: '600', color: Colors.text },
   tip:            { flexDirection: 'row', gap: 8, backgroundColor: Colors.gold + '15', borderRadius: 10, padding: 12, marginBottom: 8, alignItems: 'flex-start' },
   tipText:        { flex: 1, fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
-  saveBtn:        { backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-  saveBtnText:    { color: Colors.background, fontWeight: '800', fontSize: 15 },
+  saveBtn:          { backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  saveBtnText:      { color: Colors.background, fontWeight: '800', fontSize: 15 },
+  fieldHint:        { fontSize: 11, color: Colors.textMuted, marginBottom: 8, marginTop: -4 },
+  lessonBtn:        { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.background, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: Colors.border, marginBottom: 14 },
+  lessonBtnText:    { fontSize: 13, color: Colors.textMuted },
+  lessonSelected:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.gold + '15', borderRadius: 10, padding: 12, marginBottom: 14 },
+  lessonSelectedText: { flex: 1, fontSize: 13, color: Colors.gold, fontWeight: '600' },
+  courseTitle:      { fontSize: 13, fontWeight: '700', color: Colors.textMuted, paddingHorizontal: 4, paddingVertical: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  lessonRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  lessonRowText:    { flex: 1, fontSize: 14, color: Colors.text },
 })

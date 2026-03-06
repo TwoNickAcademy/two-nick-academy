@@ -12,11 +12,13 @@ export async function addChunk(input: AddKnowledgeInput) {
 
   const chunk = await prisma.knowledgeChunk.create({
     data: {
-      title:     input.title,
-      content:   input.content,
-      category:  input.category as KnowledgeCategory,
-      tags:      input.tags,
-      embedding: embedding,  // JSON array de floats
+      title:           input.title,
+      content:         input.content,
+      category:        input.category as KnowledgeCategory,
+      tags:            input.tags,
+      embedding:       embedding,
+      relatedCourseId: input.relatedCourseId ?? null,
+      relatedLessonId: input.relatedLessonId ?? null,
     },
   })
 
@@ -33,12 +35,14 @@ export async function listChunks(category?: KnowledgeCategory) {
     },
     orderBy: { createdAt: 'desc' },
     select: {
-      id:        true,
-      title:     true,
-      category:  true,
-      tags:      true,
-      isActive:  true,
-      createdAt: true,
+      id:              true,
+      title:           true,
+      category:        true,
+      tags:            true,
+      isActive:        true,
+      createdAt:       true,
+      relatedCourseId: true,
+      relatedLessonId: true,
     },
   })
 }
@@ -48,7 +52,7 @@ export async function listChunks(category?: KnowledgeCategory) {
 export async function getChunk(id: string) {
   const chunk = await prisma.knowledgeChunk.findUnique({
     where: { id },
-    select: { id: true, title: true, content: true, category: true, tags: true, isActive: true, createdAt: true },
+    select: { id: true, title: true, content: true, category: true, tags: true, isActive: true, createdAt: true, relatedCourseId: true, relatedLessonId: true },
   })
   if (!chunk) throw Object.assign(new Error('Chunk no encontrado'), { statusCode: 404 })
   return chunk

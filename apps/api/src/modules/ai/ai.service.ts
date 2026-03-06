@@ -93,12 +93,31 @@ export async function streamChat(params: ChatParams, res: Response): Promise<voi
   })
 
   // 3. RAG — buscar chunks relevantes de la metodología
-  let ragContext = ''
+  let ragContext    = ''
+  let relatedLesson: { courseId: string; lessonId: string; lessonTitle: string; courseTitle: string; level: string } | null = null
+
   try {
     const chunks = await retrieveRelevantChunks(message, { topK: 3 })
     ragContext   = buildRagContext(chunks)
+
+    // Buscar lección relacionada en el chunk más relevante
+    const topChunk = chunks.find(c => c.relatedLessonId && c.relatedCourseId)
+    if (topChunk?.relatedLessonId && topChunk?.relatedCourseId) {
+      const lesson = await prisma.lesson.findUnique({
+        where:  { id: topChunk.relatedLessonId },
+        select: { id: true, title: true, course: { select: { id: true, title: true, level: true } } },
+      })
+      if (lesson) {
+        relatedLesson = {
+          courseId:    lesson.course.id,
+          lessonId:    lesson.id,
+          lessonTitle: lesson.title,
+          courseTitle: lesson.course.title,
+          level:       lesson.course.level,
+        }
+      }
+    }
   } catch {
-    // RAG falla silenciosamente (sin chunks el mentor igual responde)
     console.warn('[AI] RAG retrieval falló, continuando sin contexto')
   }
 
@@ -172,6 +191,11 @@ export async function streamChat(params: ChatParams, res: Response): Promise<voi
       if (chunk.usage) {
         tokensUsed = chunk.usage.total_tokens
       }
+    }
+
+    // Enviar lección relacionada si existe
+    if (relatedLesson) {
+      res.write(`data: ${JSON.stringify({ type: 'related_lesson', lesson: relatedLesson })}\n\n`)
     }
 
     // Señal de fin de stream

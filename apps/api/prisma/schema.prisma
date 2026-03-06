@@ -417,10 +417,12 @@ model KnowledgeChunk {
   // Compatible con upgrade futuro a pgvector sin cambio de schema
   embedding  Json?
   category   KnowledgeCategory @default(METHODOLOGY)
-  tags       String[]          // keywords para búsqueda híbrida
-  isActive   Boolean           @default(true) @map("is_active")
-  createdAt  DateTime          @default(now()) @map("created_at")
-  updatedAt  DateTime          @updatedAt @map("updated_at")
+  tags              String[]          // keywords para búsqueda híbrida
+  relatedCourseId   String?           @map("related_course_id")
+  relatedLessonId   String?           @map("related_lesson_id")
+  isActive          Boolean           @default(true) @map("is_active")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
 
   @@index([category])
   @@index([isActive])
