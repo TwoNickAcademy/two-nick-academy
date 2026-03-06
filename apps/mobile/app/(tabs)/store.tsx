@@ -1,10 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Modal, ScrollView,
+  ActivityIndicator, Modal, ScrollView, RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors } from '../../src/constants/colors'
 import { api } from '../../src/api/client'
@@ -45,21 +44,22 @@ const LEVEL_COLORS: Record<string, string> = {
 }
 
 export default function StoreScreen() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [filter, setFilter]     = useState<ProductType | 'ALL'>('ALL')
-  const [selected, setSelected] = useState<Product | null>(null)
+  const [products, setProducts]   = useState<Product[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [filter, setFilter]       = useState<ProductType | 'ALL'>('ALL')
+  const [selected, setSelected]   = useState<Product | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (refresh = false) => {
+    if (!refresh) setLoading(true)
     try {
       const { data } = await api.get('/store')
       setProducts(Array.isArray(data.data) ? data.data : [])
     } catch {}
-    finally { setLoading(false) }
+    finally { setLoading(false); setRefreshing(false) }
   }, [])
 
-  useFocusEffect(useCallback(() => { load() }, [load]))
+  useEffect(() => { load() }, [load])
 
   const filtered = filter === 'ALL'
     ? products
@@ -81,7 +81,10 @@ export default function StoreScreen() {
       {loading ? (
         <ActivityIndicator color={Colors.gold} style={{ marginTop: 40 }} />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true) }} tintColor={Colors.gold} />}
+        >
 
           {/* Destacados */}
           {featured.length > 0 && (
