@@ -1,17 +1,71 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
   ActivityIndicator, Alert,
 } from 'react-native'
 import { Link } from 'expo-router'
+import * as SecureStore from 'expo-secure-store'
+import * as LocalAuthentication from 'expo-local-authentication'
 import { useAuthStore } from '../../src/store/auth.store'
 import { Colors } from '../../src/constants/colors'
 
 export default function LoginScreen() {
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const { login, isLoading }    = useAuthStore()
+  const [email,        setEmail]        = useState('')
+  const [password,     setPassword]     = useState('')
+  const [showBioBtn,   setShowBioBtn]   = useState(false)
+  const { login, hydrate, isLoading }   = useAuthStore()
+
+  useEffect(() => {
+    checkBiometric()
+  }, [])
+
+  async function checkBiometric() {
+    const token      = await SecureStore.getItemAsync('accessToken')
+    const bioEnabled = await SecureStore.getItemAsync('biometricEnabled')
+    const hardware   = await LocalAuthentication.hasHardwareAsync()
+    const enrolled   = await LocalAuthentication.isEnrolledAsync()
+    setShowBioBtn(!!(token && bioEnabled === 'true' && hardware && enrolled))
+  }
+
+  async function handleBiometric() {
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage:         'Accede a Two-Nick Academy',
+      fallbackLabel:         'Usar contraseña',
+      cancelLabel:           'Cancelar',
+      disableDeviceFallback: false,
+    })
+    if (result.success) {
+      await hydrate()
+    } else {
+      Alert.alert('Autenticación fallida', 'No se pudo verificar tu identidad.')
+    }
+  }
+
+  async function offerBiometric() {
+    const hardware = await LocalAuthentication.hasHardwareAsync()
+    const enrolled = await LocalAuthentication.isEnrolledAsync()
+    if (!hardware || !enrolled) return
+
+    const types = await LocalAuthentication.supportedAuthenticationTypesAsync()
+    const label = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)
+      ? 'Face ID'
+      : 'huella dactilar'
+
+    Alert.alert(
+      `Activar ${label}`,
+      `¿Quieres usar ${label} para acceder más rápido la próxima vez?`,
+      [
+        { text: 'Ahora no', style: 'cancel' },
+        {
+          text: 'Activar',
+          onPress: async () => {
+            await SecureStore.setItemAsync('biometricEnabled', 'true')
+          },
+        },
+      ],
+    )
+  }
 
   async function handleLogin() {
     if (!email || !password) {
@@ -20,6 +74,8 @@ export default function LoginScreen() {
     }
     try {
       await login(email.trim().toLowerCase(), password)
+      // Ofrecer activar biometría tras login exitoso
+      await offerBiometric()
     } catch (err: any) {
       Alert.alert('Error', err.message)
     }
@@ -68,6 +124,14 @@ export default function LoginScreen() {
             : <Text style={styles.buttonText}>INICIAR SESIÓN</Text>
           }
         </TouchableOpacity>
+
+        {/* Botón biométrico — solo si ya hay sesión guardada */}
+        {showBioBtn && (
+          <TouchableOpacity style={styles.bioBtn} onPress={handleBiometric}>
+            <Text style={styles.bioBtnIcon}>👆</Text>
+            <Text style={styles.bioBtnText}>Entrar con huella dactilar</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>¿No tienes cuenta? </Text>
@@ -144,6 +208,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     letterSpacing: 1,
+  },
+  bioBtn: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             10,
+    borderWidth:     1,
+    borderColor:     Colors.gold + '66',
+    borderRadius:    12,
+    paddingVertical: 14,
+    backgroundColor: Colors.card,
+  },
+  bioBtnIcon: {
+    fontSize: 22,
+  },
+  bioBtnText: {
+    color:      Colors.gold,
+    fontWeight: '600',
+    fontSize:   15,
   },
   footer: {
     flexDirection: 'row',

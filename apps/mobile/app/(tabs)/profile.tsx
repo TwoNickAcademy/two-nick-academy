@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, ScrollView, StyleSheet, Switch,
   TouchableOpacity, ActivityIndicator, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import * as SecureStore from 'expo-secure-store'
+import * as LocalAuthentication from 'expo-local-authentication'
 import { useAuthStore } from '../../src/store/auth.store'
 import { api } from '../../src/api/client'
 import { Colors } from '../../src/constants/colors'
@@ -51,10 +53,35 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore()
   const router = useRouter()
-  const [profile,  setProfile]  = useState<Profile | null>(null)
-  const [loading,  setLoading]  = useState(true)
+  const [profile,    setProfile]    = useState<Profile | null>(null)
+  const [loading,    setLoading]    = useState(true)
+  const [bioEnabled, setBioEnabled] = useState(false)
+  const [bioAvail,   setBioAvail]   = useState(false)
 
-  useEffect(() => { loadProfile() }, [])
+  useEffect(() => { loadProfile(); checkBio() }, [])
+
+  async function checkBio() {
+    const hardware = await LocalAuthentication.hasHardwareAsync()
+    const enrolled = await LocalAuthentication.isEnrolledAsync()
+    const enabled  = await SecureStore.getItemAsync('biometricEnabled')
+    setBioAvail(hardware && enrolled)
+    setBioEnabled(enabled === 'true')
+  }
+
+  async function toggleBio(value: boolean) {
+    if (value) {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Confirma tu identidad para activar',
+        cancelLabel:   'Cancelar',
+      })
+      if (!result.success) return
+      await SecureStore.setItemAsync('biometricEnabled', 'true')
+      setBioEnabled(true)
+    } else {
+      await SecureStore.deleteItemAsync('biometricEnabled')
+      setBioEnabled(false)
+    }
+  }
 
   async function loadProfile() {
     try {
@@ -159,6 +186,20 @@ export default function ProfileScreen() {
             ))}
           </View>
 
+          {/* Huella dactilar */}
+          {bioAvail && (
+            <View style={styles.bioRow}>
+              <Text style={styles.bioRowIcon}>👆</Text>
+              <Text style={styles.bioRowText}>Acceso con huella dactilar</Text>
+              <Switch
+                value={bioEnabled}
+                onValueChange={toggleBio}
+                trackColor={{ false: Colors.border, true: Colors.gold + '88' }}
+                thumbColor={bioEnabled ? Colors.gold : Colors.textMuted}
+              />
+            </View>
+          )}
+
           {/* Panel de Control — solo para TEACHER, ADMIN, CREATOR */}
           {(role === 'TEACHER' || role === 'ADMIN' || role === 'CREATOR') && (
             <TouchableOpacity style={styles.panelBtn} onPress={() => router.push('/(panel)/')}>
@@ -211,6 +252,9 @@ const styles = StyleSheet.create({
   panelBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.card, borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1.5, borderColor: Colors.gold + '55' },
   panelBtnLeft:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
   panelBtnText:   { fontSize: 15, fontWeight: '700', color: Colors.gold },
+  bioRow:         { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.card, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 12 },
+  bioRowIcon:     { fontSize: 20 },
+  bioRowText:     { flex: 1, fontSize: 15, color: Colors.text, fontWeight: '500' },
   logoutBtn:      { backgroundColor: Colors.card, borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   logoutText:     { fontSize: 15, color: Colors.red, fontWeight: '600' },
 })
