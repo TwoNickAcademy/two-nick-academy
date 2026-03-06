@@ -115,7 +115,7 @@ export default function ProfileScreen() {
             {expiry && (
               <Text style={styles.memberExpiry}>Válido hasta {expiry}</Text>
             )}
-            {level === 'GENERAL' && (
+            {level !== 'MASTER' && role === 'USER' && (
               <TouchableOpacity style={[styles.upgradeBtn, { backgroundColor: levelColor }]}>
                 <Text style={styles.upgradeBtnText}>ACTUALIZAR PLAN</Text>
               </TouchableOpacity>
