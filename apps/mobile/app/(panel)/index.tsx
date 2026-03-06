@@ -45,6 +45,7 @@ const SECTIONS: PanelSection[] = [
       { icon: 'people-circle',  label: 'Usuarios',                 description: 'Ver, editar y gestionar usuarios',            route: '/(panel)/users',         color: '#fb7185', minRole: 'ADMIN' },
       { icon: 'storefront',     label: 'Tienda',                   description: 'Gestiona productos y precios',                route: '/(panel)/store',         color: '#34d399', minRole: 'ADMIN' },
       { icon: 'megaphone',      label: 'Avisos',                   description: 'Crea y gestiona anuncios para usuarios',      route: '/(panel)/announcements', color: '#f97316', minRole: 'ADMIN' },
+      { icon: 'bulb',           label: 'Base de Conocimiento',     description: 'Enseña tu metodología al AI Mentor',          route: '/(panel)/knowledge',     color: '#a78bfa', minRole: 'ADMIN' },
       { icon: 'chatbubbles',    label: 'Moderar Chat',             description: 'Limpia salas y elimina mensajes',             route: '/(panel)/chat-mod',      color: '#60a5fa', minRole: 'ADMIN' },
     ],
   },

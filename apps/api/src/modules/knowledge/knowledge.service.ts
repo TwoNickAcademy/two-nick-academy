@@ -43,6 +43,42 @@ export async function listChunks(category?: KnowledgeCategory) {
   })
 }
 
+// ─── Obtener chunk por ID (con contenido) ────────────────────────
+
+export async function getChunk(id: string) {
+  const chunk = await prisma.knowledgeChunk.findUnique({
+    where: { id },
+    select: { id: true, title: true, content: true, category: true, tags: true, isActive: true, createdAt: true },
+  })
+  if (!chunk) throw Object.assign(new Error('Chunk no encontrado'), { statusCode: 404 })
+  return chunk
+}
+
+// ─── Actualizar chunk y regenerar embedding ───────────────────────
+
+export async function updateChunk(id: string, input: Partial<{ title: string; content: string; category: string; tags: string[] }>) {
+  const chunk = await prisma.knowledgeChunk.findUnique({ where: { id } })
+  if (!chunk) throw Object.assign(new Error('Chunk no encontrado'), { statusCode: 404 })
+
+  const newTitle   = input.title   ?? chunk.title
+  const newContent = input.content ?? chunk.content
+
+  const embeddingText = `${newTitle}\n\n${newContent}`
+  const embedding     = await generateEmbedding(embeddingText)
+
+  return prisma.knowledgeChunk.update({
+    where: { id },
+    data: {
+      title:     newTitle,
+      content:   newContent,
+      category:  (input.category as KnowledgeCategory) ?? chunk.category,
+      tags:      input.tags ?? chunk.tags,
+      embedding,
+    },
+    select: { id: true, title: true, category: true },
+  })
+}
+
 // ─── Eliminar chunk ───────────────────────────────────────────────
 
 export async function deleteChunk(id: string) {
