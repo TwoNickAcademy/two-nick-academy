@@ -13,17 +13,18 @@ interface Announcement {
   id: string
   title: string
   content: string
-  type: 'INFO' | 'ALERT' | 'PROMO' | 'EVENT'
+  type: 'INFO' | 'WARNING' | 'PROMO' | 'MAINTENANCE' | 'TRADING'
   isPinned: boolean
   createdBy: { displayName: string }
   createdAt: string
 }
 
-const ANNOUNCEMENT_META: Record<string, { color: string; icon: string; bg: string }> = {
-  INFO:  { color: '#60a5fa', icon: 'ℹ️',  bg: '#60a5fa' },
-  ALERT: { color: '#f87171', icon: '⚠️',  bg: '#f87171' },
-  PROMO: { color: '#fbbf24', icon: '🎁',  bg: '#fbbf24' },
-  EVENT: { color: '#a78bfa', icon: '📅',  bg: '#a78bfa' },
+const ANNOUNCEMENT_META: Record<string, { color: string; icon: string }> = {
+  INFO:        { color: '#60a5fa', icon: 'ℹ️'  },
+  WARNING:     { color: '#f87171', icon: '⚠️'  },
+  PROMO:       { color: '#34d399', icon: '🎁'  },
+  MAINTENANCE: { color: '#9ca3af', icon: '🔧'  },
+  TRADING:     { color: Colors.gold, icon: '📈' },
 }
 
 interface Signal {
@@ -54,14 +55,14 @@ export default function HomeScreen() {
 
   async function loadData() {
     try {
-      const [sigRes, annRes] = await Promise.all([
-        api.get('/signals?status=ACTIVE&limit=3'),
-        api.get('/announcements?limit=5'),
-      ])
+      const sigRes = await api.get('/signals?status=ACTIVE&limit=3')
       setSignals(Array.isArray(sigRes.data.data) ? sigRes.data.data : [])
+    } catch {}
+    try {
+      const annRes = await api.get('/announcements?limit=5')
       setAnnouncements(Array.isArray(annRes.data.data) ? annRes.data.data : [])
     } catch {}
-    finally { setLoading(false) }
+    setLoading(false)
   }
 
   useEffect(() => { loadData() }, [])
