@@ -9,6 +9,23 @@ import { useAuthStore } from '../../src/store/auth.store'
 import { api } from '../../src/api/client'
 import { Colors } from '../../src/constants/colors'
 
+interface Announcement {
+  id: string
+  title: string
+  content: string
+  type: 'INFO' | 'ALERT' | 'PROMO' | 'EVENT'
+  isPinned: boolean
+  createdBy: { displayName: string }
+  createdAt: string
+}
+
+const ANNOUNCEMENT_META: Record<string, { color: string; icon: string; bg: string }> = {
+  INFO:  { color: '#60a5fa', icon: 'ℹ️',  bg: '#60a5fa' },
+  ALERT: { color: '#f87171', icon: '⚠️',  bg: '#f87171' },
+  PROMO: { color: '#fbbf24', icon: '🎁',  bg: '#fbbf24' },
+  EVENT: { color: '#a78bfa', icon: '📅',  bg: '#a78bfa' },
+}
+
 interface Signal {
   id: string
   asset: string
@@ -29,23 +46,29 @@ const LEVEL_BADGE: Record<string, { label: string; color: string }> = {
 export default function HomeScreen() {
   const { user }  = useAuthStore()
   const router    = useRouter()
-  const [signals,    setSignals]    = useState<Signal[]>([])
-  const [loading,    setLoading]    = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [signals,       setSignals]       = useState<Signal[]>([])
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [refreshing,    setRefreshing]    = useState(false)
+  const [expandedAnn,   setExpandedAnn]   = useState<string | null>(null)
 
-  async function loadSignals() {
+  async function loadData() {
     try {
-      const { data } = await api.get('/signals?status=ACTIVE&limit=3')
-      setSignals(Array.isArray(data.data) ? data.data : [])
+      const [sigRes, annRes] = await Promise.all([
+        api.get('/signals?status=ACTIVE&limit=3'),
+        api.get('/announcements?limit=5'),
+      ])
+      setSignals(Array.isArray(sigRes.data.data) ? sigRes.data.data : [])
+      setAnnouncements(Array.isArray(annRes.data.data) ? annRes.data.data : [])
     } catch {}
     finally { setLoading(false) }
   }
 
-  useEffect(() => { loadSignals() }, [])
+  useEffect(() => { loadData() }, [])
 
   async function onRefresh() {
     setRefreshing(true)
-    await loadSignals()
+    await loadData()
     setRefreshing(false)
   }
 
@@ -74,6 +97,40 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         </View>
+
+        {/* Avisos */}
+        {announcements.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>📣 Avisos</Text>
+            {announcements.map(ann => {
+              const meta = ANNOUNCEMENT_META[ann.type] ?? ANNOUNCEMENT_META['INFO']!
+              const isOpen = expandedAnn === ann.id
+              return (
+                <TouchableOpacity
+                  key={ann.id}
+                  style={[styles.annCard, { borderLeftColor: meta.color }]}
+                  onPress={() => setExpandedAnn(isOpen ? null : ann.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.annHeader}>
+                    <Text style={styles.annIcon}>{meta.icon}</Text>
+                    <Text style={styles.annTitle} numberOfLines={isOpen ? undefined : 1}>
+                      {ann.isPinned ? '📌 ' : ''}{ann.title}
+                    </Text>
+                  </View>
+                  {isOpen && (
+                    <>
+                      <Text style={styles.annContent}>{ann.content}</Text>
+                      <Text style={styles.annMeta}>
+                        {ann.createdBy?.displayName} · {new Date(ann.createdAt).toLocaleDateString('es-ES')}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        )}
 
         {/* Señales activas */}
         <View style={styles.section}>
@@ -174,6 +231,12 @@ const styles = StyleSheet.create({
   signalItem:    { flex: 1 },
   signalLabel:   { fontSize: 11, marginBottom: 2 },
   signalValue:   { fontSize: 14, fontWeight: '600' },
+  annCard:       { backgroundColor: Colors.card, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: Colors.border, borderLeftWidth: 4, gap: 6 },
+  annHeader:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  annIcon:       { fontSize: 16 },
+  annTitle:      { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.text },
+  annContent:    { fontSize: 13, color: Colors.textSecondary, lineHeight: 20, marginTop: 4 },
+  annMeta:       { fontSize: 11, color: Colors.textMuted, marginTop: 4 },
   quickGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
   quickItem:     { flex: 1, minWidth: '45%', backgroundColor: Colors.card, borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   quickEmoji:    { fontSize: 28, marginBottom: 6 },
