@@ -28,11 +28,10 @@ interface Stream {
 interface Lesson {
   id: string
   title: string
-  description: string | null
-  order: number
+  orderIndex: number
   duration: number | null
-  isFree: boolean
-  completedAt: string | null
+  isPreview: boolean
+  isCompleted: boolean
   stream: Stream | null
 }
 
@@ -40,13 +39,12 @@ interface CourseDetail {
   id: string
   title: string
   description: string
-  level: string
+  minLevel: string
   totalLessons: number
   completedLessons: number
+  isLocked: boolean
   lessons: Lesson[]
 }
-
-const LEVEL_ORDER = ['GENERAL', 'VIP', 'SUPREMO', 'MASTER']
 
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -76,23 +74,21 @@ export default function CourseDetailScreen() {
   }, [fetchCourse])
 
   const handleCompleteLesson = async () => {
-    if (!activeLesson || completing) return
+    if (!activeLesson || completing || activeLesson.isCompleted) return
     setCompleting(true)
     try {
-      await api.post(`/courses/lessons/${activeLesson.id}/complete`)
+      await api.post(`/courses/${id}/lessons/${activeLesson.id}/complete`)
       setCourse(prev => {
         if (!prev) return prev
         return {
           ...prev,
-          completedLessons: prev.completedLessons + (activeLesson.completedAt ? 0 : 1),
+          completedLessons: prev.completedLessons + 1,
           lessons: prev.lessons.map(l =>
-            l.id === activeLesson.id
-              ? { ...l, completedAt: new Date().toISOString() }
-              : l
+            l.id === activeLesson.id ? { ...l, isCompleted: true } : l
           ),
         }
       })
-      setActiveLesson(prev => prev ? { ...prev, completedAt: new Date().toISOString() } : prev)
+      setActiveLesson(prev => prev ? { ...prev, isCompleted: true } : prev)
     } catch {
       // Ya completada o error — ignorar silenciosamente
     } finally {
@@ -102,10 +98,10 @@ export default function CourseDetailScreen() {
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'VIP': return Colors.levels.vip
+      case 'VIP':     return Colors.levels.vip
       case 'SUPREMO': return Colors.levels.supremo
-      case 'MASTER': return Colors.levels.master
-      default: return Colors.levels.general
+      case 'MASTER':  return Colors.levels.master
+      default:        return Colors.levels.general
     }
   }
 
@@ -163,28 +159,25 @@ export default function CourseDetailScreen() {
         {activeLesson && (
           <View style={styles.activeLessonInfo}>
             <Text style={styles.activeLessonTitle}>{activeLesson.title}</Text>
-            {activeLesson.description && (
-              <Text style={styles.activeLessonDesc}>{activeLesson.description}</Text>
-            )}
             <TouchableOpacity
               style={[
                 styles.completeBtn,
-                activeLesson.completedAt && styles.completeBtnDone,
+                activeLesson.isCompleted && styles.completeBtnDone,
               ]}
               onPress={handleCompleteLesson}
-              disabled={!!activeLesson.completedAt || completing}
+              disabled={activeLesson.isCompleted || completing}
             >
               {completing ? (
                 <ActivityIndicator size="small" color={Colors.background} />
               ) : (
                 <>
                   <Ionicons
-                    name={activeLesson.completedAt ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                    name={activeLesson.isCompleted ? 'checkmark-circle' : 'checkmark-circle-outline'}
                     size={18}
-                    color={activeLesson.completedAt ? Colors.background : Colors.background}
+                    color={Colors.background}
                   />
                   <Text style={styles.completeBtnText}>
-                    {activeLesson.completedAt ? 'Lección completada' : 'Marcar como completada'}
+                    {activeLesson.isCompleted ? 'Lección completada' : 'Marcar como completada'}
                   </Text>
                 </>
               )}
@@ -204,8 +197,8 @@ export default function CourseDetailScreen() {
             <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
           </View>
           <View style={styles.levelBadge}>
-            <Text style={[styles.levelText, { color: getLevelColor(course.level) }]}>
-              {course.level}
+            <Text style={[styles.levelText, { color: getLevelColor(course.minLevel) }]}>
+              {course.minLevel}
             </Text>
           </View>
         </View>
@@ -214,9 +207,8 @@ export default function CourseDetailScreen() {
         <View style={styles.lessonsSection}>
           <Text style={styles.sectionTitle}>Contenido del curso</Text>
           {course.lessons.map((lesson, index) => {
-            const isActive = activeLesson?.id === lesson.id
-            const isCompleted = !!lesson.completedAt
-            const isLocked = !lesson.stream && !lesson.isFree
+            const isActive   = activeLesson?.id === lesson.id
+            const isLocked   = !lesson.stream && !lesson.isPreview
 
             return (
               <TouchableOpacity
@@ -224,13 +216,13 @@ export default function CourseDetailScreen() {
                 style={[
                   styles.lessonItem,
                   isActive && styles.lessonItemActive,
-                  isCompleted && styles.lessonItemCompleted,
+                  lesson.isCompleted && styles.lessonItemCompleted,
                 ]}
                 onPress={() => {
                   if (isLocked) {
                     Alert.alert(
                       'Lección bloqueada',
-                      `Necesitas membresía ${course.level} para acceder a esta lección.`
+                      `Necesitas membresía ${course.minLevel} para acceder a esta lección.`
                     )
                     return
                   }
@@ -239,7 +231,7 @@ export default function CourseDetailScreen() {
                 disabled={isLocked}
               >
                 <View style={styles.lessonNumber}>
-                  {isCompleted ? (
+                  {lesson.isCompleted ? (
                     <Ionicons name="checkmark-circle" size={24} color={Colors.gold} />
                   ) : isLocked ? (
                     <Ionicons name="lock-closed" size={20} color={Colors.textMuted} />
@@ -264,9 +256,9 @@ export default function CourseDetailScreen() {
                         {' '}{formatDuration(lesson.duration)}
                       </Text>
                     )}
-                    {lesson.isFree && (
+                    {lesson.isPreview && (
                       <View style={styles.freeBadge}>
-                        <Text style={styles.freeBadgeText}>GRATIS</Text>
+                        <Text style={styles.freeBadgeText}>PREVIEW</Text>
                       </View>
                     )}
                   </View>
@@ -321,12 +313,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 6,
-  },
-  activeLessonDesc: {
-    color: Colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
     marginBottom: 12,
   },
   completeBtn: {
